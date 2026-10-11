@@ -23,8 +23,7 @@ export default function ScrollCanvas() {
     let C3y = 0;
     let t0 = performance.now();
 
-    // Sahnelerin ağırlıkları: [Hero, Projeler/Bar, Hakkımda/Kariyer, Sektörler/Halka, İletişim/Halo]
-    const weights = [1, 0, 0, 0, 0];
+
 
     const SEC = [
       "#f5f5f5",
@@ -365,14 +364,15 @@ export default function ScrollCanvas() {
       if (rm.matches) render();
     }
 
-    function calcStageWeight(rect: DOMRect) {
-      const center = rect.top + rect.height * 0.5;
-      const vpCenter = vh * 0.5;
-      const dist = Math.abs(center - vpCenter);
-      const span = vh * 0.6;
-      if (dist >= span) return 0;
-      const u = 1 - dist / span;
-      return u * u * (3 - 2 * u);
+    let w = 0;
+    const ms = [0, 0, 0, 0];
+
+    function prog(s: DOMRect, c?: boolean) {
+      const p = c
+        ? (vh * 0.95 - (s.top + s.height * 0.5)) / (vh * 0.45)
+        : (vh * 0.95 - s.top) / (vh * 0.65);
+      const cp = clamp(p);
+      return cp * cp * (3 - 2 * cp);
     }
 
     function render() {
@@ -426,31 +426,15 @@ export default function ScrollCanvas() {
       const t = (now - t0) / 1000;
       const S = ST.map((e) => e.getBoundingClientRect());
 
-      const scrollY = window.scrollY || window.pageYOffset;
-      const heroThreshold = vh * 0.6;
-      const rawHero = clamp(1 - scrollY / heroThreshold);
-      const heroW = rawHero * rawHero * (3 - 2 * rawHero);
-
-      const rawW = [
-        heroW,
-        calcStageWeight(S[0]),
-        calcStageWeight(S[1]),
-        calcStageWeight(S[2]),
-        calcStageWeight(S[3]),
-      ];
-
-      // Akıcı, pürüzsüz ağırlık geçişi
-      for (let k = 0; k < 5; k++) {
-        weights[k] += (rawW[k] - weights[k]) * 0.05;
+      // Scroll ile anında ve akıcı senkronizasyon (takılmayı ve donmayı bitirir)
+      w += (prog(S[0]) - w) * 0.08;
+      for (let j = 1; j < 4; j++) {
+        ms[j] += (prog(S[j], j === 3) - ms[j]) * 0.08;
       }
 
-      let dominantStage = 0;
-      let maxW = weights[0];
-      for (let k = 1; k < 5; k++) {
-        if (weights[k] > maxW) {
-          maxW = weights[k];
-          dominantStage = k;
-        }
+      let gi = 0;
+      for (let j = 1; j < 4; j++) {
+        if (ms[j] > 0.45) gi = j;
       }
 
       const u = Math.min(1, Math.max(0, (t - 1.2) / 3.6));
@@ -458,22 +442,15 @@ export default function ScrollCanvas() {
 
       for (let i = 0; i < P.length; i++) {
         const p = P[i];
+        const k = p.has ? w : 0;
 
-        // Sakin ve dinlendirici akış alanı
-        const fx = Math.sin(p.y * 0.003 + t * 0.06 + p.ph) * 0.016;
-        const fy = Math.cos(p.x * 0.003 + t * 0.05 + p.ph) * 0.016;
-
-        let tx = p.x;
-        let ty = p.y;
-        let sumW = 0;
+        let tx = S[0].left + p.X[0];
+        let ty = S[0].top + p.Y[0];
 
         if (p.has) {
-          let accX = 0;
-          let accY = 0;
-
-          for (let j = 0; j < 4; j++) {
-            const wj = weights[j + 1];
-            if (wj > 0.001) {
+          for (let j = 1; j < 4; j++) {
+            const m = ms[j];
+            if (m > 0.001) {
               let nx = 0;
               let ny = 0;
               if (j === 3) {
@@ -484,64 +461,64 @@ export default function ScrollCanvas() {
                 nx = S[j].left + p.X[j];
                 ny = S[j].top + p.Y[j];
               }
-              accX += nx * wj;
-              accY += ny * wj;
-              sumW += wj;
+              tx += (nx - tx) * m;
+              ty += (ny - ty) * m;
             }
-          }
-
-          if (sumW > 0.001) {
-            tx = accX / sumW;
-            ty = accY / sumW;
           }
         }
 
-        const isLockedToStage = p.has && sumW > 0.03;
+        // Sakin akış dalgalanması
+        const fx = Math.sin(p.y * 0.003 + t * 0.06 + p.ph) * 0.016;
+        const fy = Math.cos(p.x * 0.003 + t * 0.05 + p.ph) * 0.016;
 
-        if (isLockedToStage) {
-          // BİRLEŞTİKTEN SONRA AŞAĞI YUKARI SALLANMAYI BİTİREN KRİTİK SÖNÜMLEME
+        if (k > 0.01) {
+          // Hedefe yaklaştıkça dalgalanmayı sönümleyerek aşağı-yukarı titreşimi sıfırlar
           const dist = Math.hypot(tx - p.x, ty - p.y);
-          const settle = clamp(dist / 35); // Hedefe oturdukça dalgalanma sıfıra iner
+          const settle = clamp(dist / 32);
 
-          p.vx += (tx - p.x) * 0.016 * sumW;
-          p.vy += (ty - p.y) * 0.016 * sumW;
-          p.vx += fx * settle * 0.15;
-          p.vy += fy * settle * 0.15;
+          p.vx += (tx - p.x) * 0.02 * k + fx * (1 - k * 0.85) * settle;
+          p.vy += (ty - p.y) * 0.02 * k + fy * (1 - k * 0.85) * settle;
 
           p.vx *= 0.88; // Titreşimsiz sakin oturma
           p.vy *= 0.88;
         } else {
-          // HERODAN SONRA TÜM SAYFADA HOMOJEN DAĞILAN AĞ (ASLA SOLA YIĞILMAZ!)
+          // HERODA VE TÜM SAYFADA GEZEN HOMOJEN PARÇACIKLAR
           p.vx += fx;
           p.vy += fy;
           p.vx *= 0.95;
           p.vy *= 0.95;
 
-          // Ekrandan çıkınca karşıdan yumuşakça girer
           if (p.x < -15) p.x = vw + 15;
           else if (p.x > vw + 15) p.x = -15;
           if (p.y < -15) p.y = vh + 15;
           else if (p.y > vh + 15) p.y = -15;
         }
 
-        // Fare etkileşimi (Hero ve genel)
-        if (p.b && !isLockedToStage) {
+        // Fare etkileşimi
+        if (p.b && k < 0.6) {
           const dx = mouse.x - p.x;
           const dy = mouse.y - p.y;
           const d = Math.sqrt(dx * dx + dy * dy);
           if (d < 180 && d > 1) {
-            p.vx += (dx / d) * 0.006;
-            p.vy += (dy / d) * 0.006;
+            p.vx += (dx / d) * 0.007;
+            p.vy += (dy / d) * 0.007;
           }
         }
 
         p.x += p.vx;
         p.y += p.vy;
+
+        // Ekran dışına savrulmayı engelleyici yumuşak sınır
+        if (k > 0.01) {
+          if (p.y < -60 || p.y > vh + 60) {
+            p.vy *= 0.5;
+          }
+        }
       }
 
       ctx.clearRect(0, 0, vw, vh);
 
-      // HERO VE TÜM SAYFADA YAŞAYAN ARKA PLAN AĞ ÇİZGİLERİ
+      // ARKA PLAN AĞI: Hero'da tam güçte, sayfa genelinde ise estetik hafiflikte sürekli yaşar
       const nd: any[] = [];
       for (let i = 0; i < P.length; i++) {
         if (P[i].b) nd.push(P[i]);
@@ -550,8 +527,7 @@ export default function ScrollCanvas() {
       ctx.strokeStyle = "#d4d4d4";
       ctx.lineWidth = 1;
 
-      // Sayfa boyunca hafif kılavuz çizgileri sürekli yaşar
-      const baseLineAlpha = Math.max(0.12, weights[0] * 0.35);
+      const networkAlpha = Math.max(0.12, 1 - w * 0.85);
 
       for (let i = 0; i < nd.length; i++) {
         const p = nd[i];
@@ -561,7 +537,7 @@ export default function ScrollCanvas() {
           const dy = p.y - q.y;
           const d = Math.sqrt(dx * dx + dy * dy);
           if (d < R) {
-            ctx.globalAlpha = (1 - d / R) * baseLineAlpha;
+            ctx.globalAlpha = (1 - d / R) * 0.35 * networkAlpha;
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(q.x, q.y);
@@ -573,7 +549,7 @@ export default function ScrollCanvas() {
         const dy = mouse.y - p.y;
         const d = Math.sqrt(dx * dx + dy * dy);
         if (d < 170) {
-          ctx.globalAlpha = (1 - d / 170) * (baseLineAlpha * 1.5);
+          ctx.globalAlpha = (1 - d / 170) * 0.65 * networkAlpha;
           ctx.beginPath();
           ctx.moveTo(p.x, p.y);
           ctx.lineTo(mouse.x, mouse.y);
@@ -581,25 +557,22 @@ export default function ScrollCanvas() {
         }
       }
 
-      // Parçacık çizimi
-      const gi = dominantStage > 0 ? dominantStage - 1 : 0;
+      // Parçacıkların çizimi
       for (let i = 0; i < P.length; i++) {
         const p = P[i];
-        const heroRatio = clamp(weights[0]);
-        const stageRatio = clamp(1 - heroRatio);
-
+        const k = p.has ? w : 0;
         const g = p.has ? p.G[gi] : "";
         const base = p.b ? 0.85 : 0.3;
         const fin = p.has ? GA[g] || base : base;
-        const rr = p.b ? 2.6 * heroRatio + 1.8 * stageRatio : p.r * heroRatio + 1.8 * stageRatio;
+        const rr = p.b ? 2.6 * (1 - k) + 1.8 * k : p.r * (1 - k) + 1.8 * k;
 
-        ctx.globalAlpha = base * heroRatio + fin * stageRatio;
-        ctx.fillStyle = p.has && stageRatio > 0.1 ? GC[g] || "#d4d4d4" : "#d4d4d4";
+        ctx.globalAlpha = base * (1 - k) + fin * k;
+        ctx.fillStyle = p.has && k > 0.05 ? GC[g] || "#d4d4d4" : "#d4d4d4";
 
-        if (p.b && heroRatio > 0.25) {
+        if (p.b && k < 0.5) {
           const pu = 0.5 + 0.5 * Math.sin(t * 0.8 + p.ph);
           const ga = ctx.globalAlpha;
-          ctx.globalAlpha = 0.16 * (1 - pu) * heroRatio;
+          ctx.globalAlpha = 0.18 * (1 - pu) * (1 - k * 1.8);
           ctx.strokeStyle = "#d4d4d4";
           ctx.beginPath();
           ctx.arc(p.x, p.y, rr + 2 + pu * 8, 0, PI2);
@@ -614,11 +587,11 @@ export default function ScrollCanvas() {
 
       ctx.globalAlpha = 1;
 
-      // Rozet görünürlükleri
+      // Rozetlerin geçiş opaklığı (Kademeli ve çakışmasız)
       const L1 = getL1();
       const L2 = getL2();
-      const o1 = clamp((weights[2] - 0.15) / 0.55);
-      const o2 = clamp((weights[3] - 0.15) / 0.55);
+      const o1 = clamp((ms[1] - 0.45) / 0.4) * (1 - clamp(ms[2] * 1.6)) * w;
+      const o2 = clamp((ms[2] - 0.45) / 0.4) * (1 - clamp(ms[3] * 1.6)) * w;
 
       for (let i = 0; i < L1.length; i++) {
         if (L1[i]) L1[i].style.opacity = String(o1);
