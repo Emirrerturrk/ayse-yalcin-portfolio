@@ -264,18 +264,18 @@ export default function HomePage() {
           </div>
 
           {/* Canvas Hedef Sahnesi (Kariyer Eğrisi & Çerçeveli İstasyon Rozetleri) */}
-          <div className="stage wide !h-[min(54vh,440px)]" id="stage2">
+          <div className="stage wide !h-[480px] md:!h-[min(54vh,440px)]" id="stage2">
             {MILESTONES.map((m) => (
               <div key={m.id} className="ms">
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-mono text-emerald-400 font-extrabold bg-emerald-950/70 px-2 py-0.5 rounded border border-emerald-700/60">
+                <div className="flex items-center gap-2 md:gap-3">
+                  <span className="text-[10px] md:text-xs font-mono text-emerald-400 font-extrabold bg-emerald-950/70 px-1.5 md:px-2 py-0.5 rounded border border-emerald-700/60">
                     {m.step}
                   </span>
-                  <span className="font-bold text-base md:text-lg text-white tracking-tight">
+                  <span className="font-bold text-xs sm:text-sm md:text-lg text-white tracking-tight">
                     {m.title[lang]}
                   </span>
                 </div>
-                <div className="text-xs text-[var(--muted)] mt-1.5 font-mono pl-1">
+                <div className="text-[10px] md:text-xs text-[var(--muted)] mt-1 font-mono pl-0.5">
                   {m.period}
                 </div>
               </div>
@@ -286,7 +286,7 @@ export default function HomePage() {
         {/* SEKTÖRLER BÖLÜMÜ (ÇERÇEVELİ VE NET SEKTÖR ROZETLERİ) */}
         <section
           id="sektorler"
-          className="px-[clamp(20px,6vw,88px)] pt-16 pb-44 border-t border-[var(--line)]"
+          className="px-4 sm:px-[clamp(20px,6vw,88px)] pt-16 pb-44 border-t border-[var(--line)]"
         >
           <div className="max-w-[62ch]">
             <div className="inline-block text-xs font-mono text-[var(--muted)] border border-[var(--line)] px-2.5 py-1 rounded mb-4">
@@ -305,11 +305,11 @@ export default function HomePage() {
           </div>
 
           {/* Canvas Hedef Sahnesi (Dairesel 8 Dilimli Halka & Çerçeveli Rozetler) */}
-          <div className="stage wide !h-[min(56vh,480px)]" id="stage3">
+          <div className="stage wide !h-[340px] md:!h-[min(56vh,480px)]" id="stage3">
             {SECTORS.map((s) => (
-              <div key={s.id} className="sc flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--ink)] opacity-70" />
-                <span className="font-bold text-sm md:text-base text-white tracking-tight">
+              <div key={s.id} className="sc flex items-center gap-1.5 md:gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--ink)] opacity-70 shrink-0" />
+                <span className="font-bold text-xs md:text-base text-white tracking-tight truncate">
                   {s.title[lang]}
                 </span>
               </div>

@@ -118,6 +118,8 @@ export default function ScrollCanvas() {
       cv.height = vh * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
+      const isMobile = vw < 768;
+
       // SAHNE 1: Projeler Bar Grafik
       const sp = Math.max(8, sw / 42);
       const T0: any[] = [];
@@ -167,45 +169,76 @@ export default function ScrollCanvas() {
       const T1: any[] = [];
       const L1 = getL1();
 
-      const isMobile = vw < 768;
-      const msOffsetY = isMobile ? 32 : 56;
+      if (isMobile) {
+        // MOBİLDE DİKEY ZİKZAK YERLEŞİM (ÜST ÜSTE BİNME TAMAMEN ENGELLENDİ)
+        const colLeft = w2 * 0.28;
+        const colRight = w2 * 0.72;
+        const stepY = (h2 - 60) / 4;
 
-      MX.forEach((fx, idx) => {
-        // Mobilde kenarlardan 20px içeride tut
-        const marginX = isMobile ? 24 : 0;
-        const availableW = w2 - marginX * 2;
-        const cx = marginX + fx * availableW;
-        const cy = ycurve(fx) * h2;
-        T1.push([cx, cy, "ms"]);
-        for (let a = 0; a < 7; a++) {
-          T1.push([
-            cx + Math.cos((a / 7) * PI2) * sp2 * 0.9,
-            cy + Math.sin((a / 7) * PI2) * sp2 * 0.9,
-            "ms",
-          ]);
-        }
-        for (let a = 0; a < 14; a++) {
-          T1.push([
-            cx + Math.cos((a / 14) * PI2) * sp2 * 1.8,
-            cy + Math.sin((a / 14) * PI2) * sp2 * 1.8,
-            "ms",
-          ]);
-        }
-        const lb = L1[idx];
-        if (lb) {
-          lb.style.left = `${cx}px`;
-          lb.style.top = `${idx % 2 ? cy + msOffsetY : cy - msOffsetY}px`;
-        }
-      });
+        MX.forEach((_, idx) => {
+          const cx = idx % 2 === 0 ? colLeft : colRight;
+          const cy = 30 + idx * stepY;
+          T1.push([cx, cy, "ms"]);
+
+          for (let a = 0; a < 7; a++) {
+            T1.push([
+              cx + Math.cos((a / 7) * PI2) * sp2 * 0.9,
+              cy + Math.sin((a / 7) * PI2) * sp2 * 0.9,
+              "ms",
+            ]);
+          }
+
+          const lb = L1[idx];
+          if (lb) {
+            lb.style.left = `${cx}px`;
+            lb.style.top = `${cy}px`;
+            lb.style.transform = "translate(-50%, -50%)";
+          }
+        });
+      } else {
+        // MASAÜSTÜNDE YATAY EĞRİ
+        MX.forEach((fx, idx) => {
+          const cx = fx * w2;
+          const cy = ycurve(fx) * h2;
+          T1.push([cx, cy, "ms"]);
+          for (let a = 0; a < 7; a++) {
+            T1.push([
+              cx + Math.cos((a / 7) * PI2) * sp2 * 0.9,
+              cy + Math.sin((a / 7) * PI2) * sp2 * 0.9,
+              "ms",
+            ]);
+          }
+          for (let a = 0; a < 14; a++) {
+            T1.push([
+              cx + Math.cos((a / 14) * PI2) * sp2 * 1.8,
+              cy + Math.sin((a / 14) * PI2) * sp2 * 1.8,
+              "ms",
+            ]);
+          }
+          const lb = L1[idx];
+          if (lb) {
+            lb.style.left = `${cx}px`;
+            lb.style.top = `${idx % 2 ? cy + 54 : cy - 54}px`;
+            lb.style.transform = "translate(-50%, -50%)";
+          }
+        });
+      }
 
       const rc = Math.max(0, M - T1.length);
       for (let i = 0; i < rc; i++) {
         const uu = (i + Math.random()) / rc;
-        T1.push([
-          uu * w2,
-          ycurve(uu) * h2 + (Math.random() + Math.random() - 1) * sp2 * 2.2,
-          "rib",
-        ]);
+        if (isMobile) {
+          const stepY = (h2 - 60) / 4;
+          const py = 30 + uu * 4 * stepY;
+          const px = (w2 * 0.5) + Math.sin(uu * Math.PI * 4) * (w2 * 0.22);
+          T1.push([px, py, "rib"]);
+        } else {
+          T1.push([
+            uu * w2,
+            ycurve(uu) * h2 + (Math.random() + Math.random() - 1) * sp2 * 2.2,
+            "rib",
+          ]);
+        }
       }
       shuffle(T1);
 
@@ -215,11 +248,11 @@ export default function ScrollCanvas() {
       const cx3 = w3 / 2;
       const cy3 = h3 / 2;
 
-      // Mobilde taşmayı önleyen duyarlı yarıçap ve ofset
+      // Mobilde taşmayı kesinlikle engelleyen yarıçap ve ofset
       const Rd = isMobile
-        ? Math.min(w3 * 0.25, h3 * 0.26, 75)
+        ? Math.min(w3 * 0.2, h3 * 0.2, 55)
         : Math.max(60, Math.min(h3 / 2 - 40, w3 / 2 - 210));
-      const secOffset = isMobile ? Rd + 18 : Rd + 48;
+      const secOffset = isMobile ? Rd + 14 : Rd + 48;
 
       const Ri = Rd * 0.58;
       const T2: any[] = [];
@@ -242,13 +275,19 @@ export default function ScrollCanvas() {
       shuffle(T2);
 
       const L2 = getL2();
+      const minXBound = isMobile ? 65 : 20;
+      const maxXBound = isMobile ? w3 - 65 : w3 - 20;
+
       for (let i = 0; i < 8; i++) {
         const lb2 = L2[i];
         if (!lb2) continue;
         const am = -1.5708 + (i + 0.5) * span;
         const co = Math.cos(am);
         const si = Math.sin(am);
-        lb2.style.left = `${cx3 + co * secOffset}px`;
+        const rawX = cx3 + co * secOffset;
+        const clampedX = Math.max(minXBound, Math.min(maxXBound, rawX));
+
+        lb2.style.left = `${clampedX}px`;
         lb2.style.top = `${cy3 + si * secOffset}px`;
         lb2.style.transform =
           co > 0.25
@@ -289,7 +328,8 @@ export default function ScrollCanvas() {
       }
       shuffle(T3);
 
-      const D = vw < 820 ? 60 : 110;
+      // Toplam parçacık sayısı (Sahne parçacıkları + Her zaman gezen ambiyans parçacıkları)
+      const D = isMobile ? 50 : 90;
       const N = M + D;
       const old = P;
       const np: any[] = [];
@@ -297,7 +337,7 @@ export default function ScrollCanvas() {
       for (let q = 0; q < N; q++) {
         const o = old[q];
         const has = q < M;
-        const bn = q % 6 === 0;
+        const bn = q % 5 === 0;
         const a0 = has ? T0[q] : null;
         const a1 = has ? T1[q] : null;
         const a2 = has ? T2[q] : null;
@@ -306,11 +346,11 @@ export default function ScrollCanvas() {
         np.push({
           x: o ? o.x : rand(0, vw),
           y: o ? o.y : rand(0, vh),
-          vx: o ? o.vx : rand(-0.08, 0.08), // Yavaşlatılmış başlangıç hızı
-          vy: o ? o.vy : rand(-0.08, 0.08),
+          vx: o ? o.vx : rand(-0.06, 0.06),
+          vy: o ? o.vy : rand(-0.06, 0.06),
           has,
           b: bn,
-          r: bn ? 2.8 : rand(1.1, 1.7),
+          r: bn ? 2.6 : rand(1.1, 1.6),
           ph: rand(0, 6.28),
           X: has ? [a0[0], a1[0], a2[0], 0] : [0, 0, 0, 0],
           Y: has ? [a0[1], a1[1], a2[1], 0] : [0, 0, 0, 0],
@@ -325,15 +365,14 @@ export default function ScrollCanvas() {
       if (rm.matches) render();
     }
 
-    // Sahne ağırlığı: Viewport merkezine yakınlığa göre [0, 1] arası yumuşak çan eğrisi
     function calcStageWeight(rect: DOMRect) {
       const center = rect.top + rect.height * 0.5;
       const vpCenter = vh * 0.5;
       const dist = Math.abs(center - vpCenter);
-      const span = vh * 0.55; // Sahnenin etkili olduğu alan genişliği
+      const span = vh * 0.6;
       if (dist >= span) return 0;
       const u = 1 - dist / span;
-      return u * u * (3 - 2 * u); // smoothstep
+      return u * u * (3 - 2 * u);
     }
 
     function render() {
@@ -387,9 +426,8 @@ export default function ScrollCanvas() {
       const t = (now - t0) / 1000;
       const S = ST.map((e) => e.getBoundingClientRect());
 
-      // Scroll pozisyonuna göre her sahnenin ağırlığını hesapla
       const scrollY = window.scrollY || window.pageYOffset;
-      const heroThreshold = vh * 0.65;
+      const heroThreshold = vh * 0.6;
       const rawHero = clamp(1 - scrollY / heroThreshold);
       const heroW = rawHero * rawHero * (3 - 2 * rawHero);
 
@@ -401,12 +439,11 @@ export default function ScrollCanvas() {
         calcStageWeight(S[3]),
       ];
 
-      // Ağırlıkları son derece yumuşak ve sakin geçişle güncelle (relax & smooth ease)
+      // Akıcı, pürüzsüz ağırlık geçişi
       for (let k = 0; k < 5; k++) {
-        weights[k] += (rawW[k] - weights[k]) * 0.045;
+        weights[k] += (rawW[k] - weights[k]) * 0.05;
       }
 
-      // Hangi sahne şu an baskın?
       let dominantStage = 0;
       let maxW = weights[0];
       for (let k = 1; k < 5; k++) {
@@ -416,23 +453,24 @@ export default function ScrollCanvas() {
         }
       }
 
-      const isHero = weights[0] > 0.05;
       const u = Math.min(1, Math.max(0, (t - 1.2) / 3.6));
       const R = 14 + 136 * (u * u * (3 - 2 * u));
 
       for (let i = 0; i < P.length; i++) {
         const p = P[i];
 
-        // Hedef koordinat hesaplama (aktif sahnelerin ağırlıklı toplamı)
+        // Sakin ve dinlendirici akış alanı
+        const fx = Math.sin(p.y * 0.003 + t * 0.06 + p.ph) * 0.016;
+        const fy = Math.cos(p.x * 0.003 + t * 0.05 + p.ph) * 0.016;
+
         let tx = p.x;
         let ty = p.y;
+        let sumW = 0;
 
         if (p.has) {
-          let sumW = 0;
           let accX = 0;
           let accY = 0;
 
-          // Stage 0..3 (Projeler, Hakkımda, Sektörler, İletişim)
           for (let j = 0; j < 4; j++) {
             const wj = weights[j + 1];
             if (wj > 0.001) {
@@ -458,84 +496,92 @@ export default function ScrollCanvas() {
           }
         }
 
-        // Parçacık fiziği (yavaş, ipeksi, dinlendirici çekim kuvveti)
-        const kStrength = clamp(1 - weights[0]);
-        const fl = clamp(weights[0]);
+        const isLockedToStage = p.has && sumW > 0.03;
 
-        const fx = Math.sin(p.y * 0.003 + t * 0.08 + p.ph) * 0.02;
-        const fy = Math.cos(p.x * 0.003 + t * 0.07 + p.ph) * 0.02;
+        if (isLockedToStage) {
+          // BİRLEŞTİKTEN SONRA AŞAĞI YUKARI SALLANMAYI BİTİREN KRİTİK SÖNÜMLEME
+          const dist = Math.hypot(tx - p.x, ty - p.y);
+          const settle = clamp(dist / 35); // Hedefe oturdukça dalgalanma sıfıra iner
 
-        p.vx += (tx - p.x) * 0.01 * kStrength + fx * fl;
-        p.vy += (ty - p.y) * 0.01 * kStrength + fy * fl;
+          p.vx += (tx - p.x) * 0.016 * sumW;
+          p.vy += (ty - p.y) * 0.016 * sumW;
+          p.vx += fx * settle * 0.15;
+          p.vy += fy * settle * 0.15;
 
-        // Fare etkileşimi (yalnızca Hero'da veya hafifçe)
-        if (p.b && weights[0] > 0.4) {
+          p.vx *= 0.88; // Titreşimsiz sakin oturma
+          p.vy *= 0.88;
+        } else {
+          // HERODAN SONRA TÜM SAYFADA HOMOJEN DAĞILAN AĞ (ASLA SOLA YIĞILMAZ!)
+          p.vx += fx;
+          p.vy += fy;
+          p.vx *= 0.95;
+          p.vy *= 0.95;
+
+          // Ekrandan çıkınca karşıdan yumuşakça girer
+          if (p.x < -15) p.x = vw + 15;
+          else if (p.x > vw + 15) p.x = -15;
+          if (p.y < -15) p.y = vh + 15;
+          else if (p.y > vh + 15) p.y = -15;
+        }
+
+        // Fare etkileşimi (Hero ve genel)
+        if (p.b && !isLockedToStage) {
           const dx = mouse.x - p.x;
           const dy = mouse.y - p.y;
           const d = Math.sqrt(dx * dx + dy * dy);
           if (d < 180 && d > 1) {
-            p.vx += (dx / d) * 0.008;
-            p.vy += (dy / d) * 0.008;
+            p.vx += (dx / d) * 0.006;
+            p.vy += (dy / d) * 0.006;
           }
         }
 
-        p.vx *= 0.96;
-        p.vy *= 0.96;
         p.x += p.vx;
         p.y += p.vy;
-
-        // Sınır koruması
-        if (weights[0] > 0.3) {
-          if (p.x < -10) p.x = vw + 10;
-          else if (p.x > vw + 10) p.x = -10;
-          if (p.y < -10) p.y = vh + 10;
-          else if (p.y > vh + 10) p.y = -10;
-        }
       }
 
       ctx.clearRect(0, 0, vw, vh);
 
-      // Hero ağ çizgileri (sadece hero ağırlığı varken ve yavaşça)
-      if (weights[0] > 0.05) {
-        const nd: any[] = [];
-        const fade = weights[0];
-        for (let i = 0; i < P.length; i++) {
-          if (P[i].b) nd.push(P[i]);
-        }
+      // HERO VE TÜM SAYFADA YAŞAYAN ARKA PLAN AĞ ÇİZGİLERİ
+      const nd: any[] = [];
+      for (let i = 0; i < P.length; i++) {
+        if (P[i].b) nd.push(P[i]);
+      }
 
-        ctx.strokeStyle = "#d4d4d4";
-        ctx.lineWidth = 1;
+      ctx.strokeStyle = "#d4d4d4";
+      ctx.lineWidth = 1;
 
-        for (let i = 0; i < nd.length; i++) {
-          const p = nd[i];
-          for (let j = i + 1; j < nd.length; j++) {
-            const q = nd[j];
-            const dx = p.x - q.x;
-            const dy = p.y - q.y;
-            const d = Math.sqrt(dx * dx + dy * dy);
-            if (d < R) {
-              ctx.globalAlpha = (1 - d / R) * 0.28 * fade;
-              ctx.beginPath();
-              ctx.moveTo(p.x, p.y);
-              ctx.lineTo(q.x, q.y);
-              ctx.stroke();
-            }
-          }
+      // Sayfa boyunca hafif kılavuz çizgileri sürekli yaşar
+      const baseLineAlpha = Math.max(0.12, weights[0] * 0.35);
 
-          const dx = mouse.x - p.x;
-          const dy = mouse.y - p.y;
+      for (let i = 0; i < nd.length; i++) {
+        const p = nd[i];
+        for (let j = i + 1; j < nd.length; j++) {
+          const q = nd[j];
+          const dx = p.x - q.x;
+          const dy = p.y - q.y;
           const d = Math.sqrt(dx * dx + dy * dy);
-          if (d < 170) {
-            ctx.globalAlpha = (1 - d / 170) * 0.5 * fade;
+          if (d < R) {
+            ctx.globalAlpha = (1 - d / R) * baseLineAlpha;
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
-            ctx.lineTo(mouse.x, mouse.y);
+            ctx.lineTo(q.x, q.y);
             ctx.stroke();
           }
         }
+
+        const dx = mouse.x - p.x;
+        const dy = mouse.y - p.y;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < 170) {
+          ctx.globalAlpha = (1 - d / 170) * (baseLineAlpha * 1.5);
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(mouse.x, mouse.y);
+          ctx.stroke();
+        }
       }
 
-      // Parçacıkları çiz
+      // Parçacık çizimi
       const gi = dominantStage > 0 ? dominantStage - 1 : 0;
       for (let i = 0; i < P.length; i++) {
         const p = P[i];
@@ -545,16 +591,15 @@ export default function ScrollCanvas() {
         const g = p.has ? p.G[gi] : "";
         const base = p.b ? 0.85 : 0.3;
         const fin = p.has ? GA[g] || base : base;
-        const rr = p.b ? 2.8 * heroRatio + 1.8 * stageRatio : p.r * heroRatio + 1.8 * stageRatio;
+        const rr = p.b ? 2.6 * heroRatio + 1.8 * stageRatio : p.r * heroRatio + 1.8 * stageRatio;
 
         ctx.globalAlpha = base * heroRatio + fin * stageRatio;
         ctx.fillStyle = p.has && stageRatio > 0.1 ? GC[g] || "#d4d4d4" : "#d4d4d4";
 
-        // Yavaş, sakin nabız halkası (t * 0.8 frekans)
-        if (p.b && heroRatio > 0.3) {
+        if (p.b && heroRatio > 0.25) {
           const pu = 0.5 + 0.5 * Math.sin(t * 0.8 + p.ph);
           const ga = ctx.globalAlpha;
-          ctx.globalAlpha = 0.18 * (1 - pu) * heroRatio;
+          ctx.globalAlpha = 0.16 * (1 - pu) * heroRatio;
           ctx.strokeStyle = "#d4d4d4";
           ctx.beginPath();
           ctx.arc(p.x, p.y, rr + 2 + pu * 8, 0, PI2);
@@ -569,11 +614,11 @@ export default function ScrollCanvas() {
 
       ctx.globalAlpha = 1;
 
-      // Etiket opaklıkları (Hakkımda: weights[2], Sektörler: weights[3])
+      // Rozet görünürlükleri
       const L1 = getL1();
       const L2 = getL2();
-      const o1 = clamp((weights[2] - 0.2) / 0.6);
-      const o2 = clamp((weights[3] - 0.2) / 0.6);
+      const o1 = clamp((weights[2] - 0.15) / 0.55);
+      const o2 = clamp((weights[3] - 0.15) / 0.55);
 
       for (let i = 0; i < L1.length; i++) {
         if (L1[i]) L1[i].style.opacity = String(o1);

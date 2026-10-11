@@ -201,23 +201,25 @@ main {
     height: 220px;
   }
   .stage.wide {
-    height: 350px;
-    margin-top: 28px;
+    height: 480px;
+    margin-top: 24px;
   }
   .ms {
-    padding: 8px 14px;
-    font-size: 0.84rem;
+    padding: 7px 12px;
+    font-size: 0.8rem;
     border-radius: 8px;
     border-width: 1px;
-    max-width: 140px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7);
+    max-width: 135px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.75);
+    white-space: normal;
   }
   .sc {
-    padding: 6px 12px;
-    font-size: 0.8rem;
+    padding: 5px 10px;
+    font-size: 0.75rem;
     border-radius: 6px;
     border-width: 1px;
     box-shadow: 0 5px 16px rgba(0, 0, 0, 0.7);
+    max-width: 120px;
   }
   .stage.contact {
     height: 320px;
